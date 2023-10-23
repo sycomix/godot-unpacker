@@ -19,12 +19,12 @@ def main(args):
 		f = mmap.mmap(d.fileno(), 0)
 		magic = bytes.fromhex('47 44 50 43') # GDPC
 		if f.read(4) == magic:
-			print(args[0] + " looks like a pck archive")
+			print(f"{args[0]} looks like a pck archive")
 			f.seek(0)
 		else:
 			f.seek(-4, os.SEEK_END)
 			if f.read(4) == magic:
-				print(args[0] + " looks like a self-contained exe")
+				print(f"{args[0]} looks like a self-contained exe")
 				f.seek(-12, os.SEEK_END)
 				main_offset = int.from_bytes(f.read(8), byteorder='little')
 				f.seek(f.tell()-main_offset-8)
@@ -34,13 +34,15 @@ def main(args):
 				f.close()
 				return "Error: file not supported"
 		package_headers = struct.unpack_from("IIIII16II", f.read(20+64+4))
-		print (args[0] + " info:", package_headers)
+		print(f"{args[0]} info:", package_headers)
 		file_count = package_headers[-1]
 
 		for file_num in range(1, file_count+1):
 			filepath_length = int.from_bytes(f.read(4), byteorder="little")
-			file_info = struct.unpack_from("<{}sQQ16B".format(filepath_length), f.read(filepath_length+8+8+16))
-			path, offset, size = file_info[0:3]
+			file_info = struct.unpack_from(
+				f"<{filepath_length}sQQ16B", f.read(filepath_length + 8 + 8 + 16)
+			)
+			path, offset, size = file_info[:3]
 			path = path.decode("utf-8").replace("res://","")
 			md5 = "".join([format(x, 'x') for x in file_info[-16:]])
 			file_list.append({ 'path': path, 'offset': offset, 'size': size, 'md5': md5 })
